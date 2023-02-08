@@ -49,11 +49,21 @@ namespace Amazon.Extensions.CognitoAuthentication
             Tuple<BigInteger, BigInteger> tupleAa = AuthenticationHelper.CreateAaTuple();
             InitiateAuthRequest initiateRequest = CreateSrpAuthRequest(tupleAa);
 
+            if (srpRequest.IsCustomAuthFlow)
+            {
+                initiateRequest.AuthFlow = AuthFlowType.CUSTOM_AUTH;
+                initiateRequest.AuthParameters.Add("CHALLENGE_NAME", "SRP_A");
+            }
             InitiateAuthResponse initiateResponse = await Provider.InitiateAuthAsync(initiateRequest).ConfigureAwait(false);
             UpdateUsernameAndSecretHash(initiateResponse.ChallengeParameters);
 
             RespondToAuthChallengeRequest challengeRequest =
                 CreateSrpPasswordVerifierAuthRequest(initiateResponse, srpRequest.Password, tupleAa);
+
+            if (srpRequest.ClientMetadata != null)
+            {
+                challengeRequest.ClientMetadata = new Dictionary<string, string>(srpRequest.ClientMetadata);
+            }
 
             bool challengeResponsesValid = challengeRequest != null && challengeRequest.ChallengeResponses != null;
             bool deviceKeyValid = Device != null && !string.IsNullOrEmpty(Device.DeviceKey);
